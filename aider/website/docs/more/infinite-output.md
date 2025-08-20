@@ -1,6 +1,6 @@
 ---
 parent: More info
-nav_order: 920
+nav_order: 480
 description: Aider can handle "infinite output" from models that support prefill.
 ---
 
@@ -55,22 +55,62 @@ model_list = "\n".join(f"- {model}" for model in sorted(prefill_models))
 
 cog.out(model_list)
 ]]]-->
+- anthropic.claude-3-5-haiku-20241022-v1:0
+- anthropic.claude-3-5-sonnet-20241022-v2:0
+- anthropic.claude-3-7-sonnet-20250219-v1:0
+- anthropic.claude-opus-4-1-20250805-v1:0
+- anthropic.claude-opus-4-20250514-v1:0
+- anthropic.claude-sonnet-4-20250514-v1:0
+- apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+- apac.anthropic.claude-sonnet-4-20250514-v1:0
+- azure_ai/mistral-medium-2505
+- claude-3-5-haiku-20241022
+- claude-3-5-haiku-latest
 - claude-3-5-sonnet-20240620
+- claude-3-5-sonnet-20241022
+- claude-3-5-sonnet-latest
+- claude-3-7-sonnet-20250219
+- claude-3-7-sonnet-latest
 - claude-3-haiku-20240307
 - claude-3-opus-20240229
-- claude-3-sonnet-20240229
+- claude-3-opus-latest
+- claude-4-opus-20250514
+- claude-4-sonnet-20250514
+- claude-opus-4-1
+- claude-opus-4-1-20250805
+- claude-opus-4-20250514
+- claude-sonnet-4-20250514
 - codestral/codestral-2405
 - codestral/codestral-latest
-- deepseek-chat
-- deepseek-coder
+- databricks/databricks-claude-3-7-sonnet
+- deepseek/deepseek-chat
+- deepseek/deepseek-coder
+- deepseek/deepseek-r1
+- deepseek/deepseek-reasoner
+- deepseek/deepseek-v3
+- eu.anthropic.claude-3-5-haiku-20241022-v1:0
+- eu.anthropic.claude-3-5-sonnet-20241022-v2:0
+- eu.anthropic.claude-3-7-sonnet-20250219-v1:0
+- eu.anthropic.claude-opus-4-1-20250805-v1:0
+- eu.anthropic.claude-opus-4-20250514-v1:0
+- eu.anthropic.claude-sonnet-4-20250514-v1:0
 - mistral/codestral-2405
 - mistral/codestral-latest
 - mistral/codestral-mamba-latest
+- mistral/devstral-medium-2507
+- mistral/devstral-small-2505
+- mistral/devstral-small-2507
+- mistral/magistral-medium-2506
+- mistral/magistral-medium-latest
+- mistral/magistral-small-2506
+- mistral/magistral-small-latest
 - mistral/mistral-large-2402
 - mistral/mistral-large-2407
+- mistral/mistral-large-2411
 - mistral/mistral-large-latest
 - mistral/mistral-medium
 - mistral/mistral-medium-2312
+- mistral/mistral-medium-2505
 - mistral/mistral-medium-latest
 - mistral/mistral-small
 - mistral/mistral-small-latest
@@ -82,11 +122,38 @@ cog.out(model_list)
 - mistral/open-mixtral-8x22b
 - mistral/open-mixtral-8x7b
 - mistral/pixtral-12b-2409
+- mistral/pixtral-large-2411
+- mistral/pixtral-large-latest
 - openrouter/anthropic/claude-3.5-sonnet
+- openrouter/anthropic/claude-3.7-sonnet
+- openrouter/anthropic/claude-sonnet-4
+- openrouter/deepseek/deepseek-r1
+- openrouter/deepseek/deepseek-r1-0528
+- us.anthropic.claude-3-5-haiku-20241022-v1:0
+- us.anthropic.claude-3-5-sonnet-20241022-v2:0
+- us.anthropic.claude-3-7-sonnet-20250219-v1:0
+- us.anthropic.claude-opus-4-1-20250805-v1:0
+- us.anthropic.claude-opus-4-20250514-v1:0
+- us.anthropic.claude-sonnet-4-20250514-v1:0
+- vertex_ai/claude-3-5-haiku
+- vertex_ai/claude-3-5-haiku@20241022
+- vertex_ai/claude-3-5-sonnet
+- vertex_ai/claude-3-5-sonnet-v2
+- vertex_ai/claude-3-5-sonnet-v2@20241022
 - vertex_ai/claude-3-5-sonnet@20240620
+- vertex_ai/claude-3-7-sonnet@20250219
+- vertex_ai/claude-3-haiku
 - vertex_ai/claude-3-haiku@20240307
+- vertex_ai/claude-3-opus
 - vertex_ai/claude-3-opus@20240229
+- vertex_ai/claude-3-sonnet
 - vertex_ai/claude-3-sonnet@20240229
+- vertex_ai/claude-opus-4
+- vertex_ai/claude-opus-4-1
+- vertex_ai/claude-opus-4-1@20250805
+- vertex_ai/claude-opus-4@20250514
+- vertex_ai/claude-sonnet-4
+- vertex_ai/claude-sonnet-4@20250514
 <!--[[[end]]]-->
 
 

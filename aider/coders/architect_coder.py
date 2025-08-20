@@ -6,11 +6,15 @@ from .base_coder import Coder
 class ArchitectCoder(AskCoder):
     edit_format = "architect"
     gpt_prompts = ArchitectPrompts()
+    auto_accept_architect = False
 
     def reply_completed(self):
         content = self.partial_response_content
 
-        if not self.io.confirm_ask("Edit the files?"):
+        if not content or not content.strip():
+            return
+
+        if not self.auto_accept_architect and not self.io.confirm_ask("Edit the files?"):
             return
 
         kwargs = dict()

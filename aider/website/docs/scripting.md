@@ -1,6 +1,6 @@
 ---
 parent: More info
-nav_order: 900
+nav_order: 400
 description: You can script aider via the command line or python.
 ---
 
@@ -88,10 +88,13 @@ for all the supported arguments.
 
 It can also be helpful to set the equivalent of `--yes` by doing this:
 
-```
+```python
 from aider.io import InputOutput
 io = InputOutput(yes=True)
 # ...
 coder = Coder.create(model=model, fnames=fnames, io=io)
 ```
 
+{: .note }
+The python scripting API is not officially supported or documented,
+and could change in future releases without providing backwards compatibility.

@@ -30,7 +30,7 @@ current chat to build a compact
 Adding a bunch of files that are mostly irrelevant to the
 task at hand will often distract or confuse the LLM.
 The LLM will give worse coding results, and sometimese even fail to correctly edit files.
-Addings extra files will also increase the token costs on your OpenAI invoice.
+Addings extra files will also increase your token costs.
 
 Again, it's usually best to just add the files to the chat that will need to be modified.
 If you still wish to add lots of files to the chat, you can:
@@ -60,6 +60,23 @@ directory you start in.
 You can also create a `.aiderignore` file to tell aider
 to ignore parts of the repo that aren't relevant to your task.
 This file conforms to `.gitignore` syntax and conventions.
+For example, to focus only on specific directories in a monorepo,
+you could create a `.aiderignore` file with:
+
+```
+# Ignore everything
+/*
+
+# Allow specific directories and their contents
+!foo/
+!bar/
+!baz/
+
+# Allow nested files under these directories
+!foo/**
+!bar/**
+!baz/**
+```
 
 You can use `--aiderignore <filename>` to name a specific file
 to use for ignore patterns.
@@ -124,6 +141,33 @@ When starting a fresh aider session, you can include recent git history in the c
 
 Remember, the chat history already includes recent changes made during the current session, so this tip is most useful when starting a new aider session and you want to provide context about recent work.
 
+You can also use aider to review PR branches:
+
+```
+/run git diff one-branch..another-branch
+
+...
+
+Add 6.9k tokens of command output to the chat? (Y)es/(N)o [Yes]: Yes
+
+/ask Are there any problems with the way this change works with the FooBar class?
+```
+
+And of course you can prepare diff output outside of aider and provide it as
+a file for aider to read:
+
+```
+$ git diff -C10 v1..v2 > v1-v2-changes.diff
+$ aider --read v1-v2-changes.diff
+
+Aider v0.77.2.dev+import
+Main model: anthropic/claude-3-7-sonnet-20250219 with diff edit format, 8k think tokens
+──────────────────────────────────
+v1-v2-changes.diff
+> Do you see any potential bugs in this PR?
+```
+
+
 {: .tip }
 The `/git` command will not work for this purpose, as its output is not included in the chat. 
 
@@ -150,10 +194,12 @@ python -m aider
 
 
 
-
 ## Can I change the system prompts that aider uses?
 
-Aider is set up to support different system prompts and edit formats
+The most convenient way to add custom instructions is to use a
+[conventions file](https://aider.chat/docs/usage/conventions.html).
+
+But, aider is set up to support different actual system prompts and edit formats
 in a modular way. If you look in the `aider/coders` subdirectory, you'll
 see there's a base coder with base prompts, and then there are
 a number of
@@ -190,6 +236,105 @@ all the raw information being sent to/from the LLM in the conversation.
 You can also refer to the
 [instructions for installing a development version of aider](https://aider.chat/docs/install/optional.html#install-the-development-version-of-aider).
 
+## What LLMs do you use to build aider?
+
+Aider writes a lot of its own code, usually about 70% of the new code in each
+release.
+People often ask which LLMs I use with aider, when writing aider.
+Below is a table showing the models I have used recently,
+extracted from the 
+[public log](https://github.com/aider-ai/aider/blob/main/aider/website/assets/sample-analytics.jsonl)
+of my
+[aider analytics](https://aider.chat/docs/more/analytics.html).
+
+<!--[[[cog
+import sys
+sys.path.append(".")
+import scripts.my_models as my_models
+stats = my_models.collect_model_stats()
+html = my_models.format_html_table(stats)
+cog.out(html)
+]]]-->
+<style>
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background-color: #f2f2f2; }
+tr:hover { background-color: #f5f5f5; }
+.right { text-align: right; }
+</style>
+<table>
+<tr><th>Model Name</th><th class='right'>Total Tokens</th><th class='right'>Percent</th></tr>
+<tr><td>gemini/gemini-2.5-pro</td><td class='right'>222,908</td><td class='right'>33.2%</td></tr>
+<tr><td>gpt-5</td><td class='right'>211,072</td><td class='right'>31.4%</td></tr>
+<tr><td>None</td><td class='right'>168,988</td><td class='right'>25.1%</td></tr>
+<tr><td>o3-pro</td><td class='right'>36,620</td><td class='right'>5.4%</td></tr>
+<tr><td>gemini/gemini-2.5-flash-lite</td><td class='right'>15,470</td><td class='right'>2.3%</td></tr>
+<tr><td>gemini/gemini-2.5-flash-lite-preview-06-17</td><td class='right'>11,371</td><td class='right'>1.7%</td></tr>
+<tr><td>o3</td><td class='right'>3,915</td><td class='right'>0.6%</td></tr>
+<tr><td>openai/REDACTED</td><td class='right'>1,970</td><td class='right'>0.3%</td></tr>
+</table>
+
+{: .note :}
+Some models show as REDACTED, because they are new or unpopular models.
+Aider's analytics only records the names of "well known" LLMs.
+<!--[[[end]]]-->
+
+## How are the "aider wrote xx% of code" stats computed?
+
+[Aider is tightly integrated with git](/docs/git.html) so all
+of aider's code changes are committed to the repo with proper attribution.
+The 
+[stats are computed](https://github.com/Aider-AI/aider/blob/main/scripts/blame.py)
+by doing something like `git blame` on the repo,
+and counting up who wrote all the new lines of code in each release.
+Only lines in source code files are counted, not documentation or prompt files.
+
+## Why did aider ignore/discard its proposed edits after it asked to add a new file to the chat?
+
+If aider prompts you to add a new file to the chat and you say yes,
+it will re-submit the original request. 
+The fact that the LLM's reply indicated that it needed to see another file (and you said yes)
+is often a sign that the LLM should have been able to see/edit that file in the first place. 
+Without access to it, there is increased chance that it's done a bad implementation of the requested change.
+Often LLMs will hallucinate content for the files they needed but didn't have.
+So aider re-submits the original request in this situation.
+
+## Why does aider sometimes stop highlighting code in its replies?
+
+Aider displays the markdown responses that are coming back from the LLM.
+Usually, the LLM will reply with code in a markdown "code block" with
+triple backtick fences, like this:
+
+````
+Here's some code:
+
+```
+print("hello")
+```
+````
+
+But if you've added files to the chat that contain triple backticks,
+aider needs to tell the LLM to use a different set of fences.
+Otherwise, the LLM can't safely include your code's triple backticks
+inside the code blocks that it returns with edits.
+Aider will use fences like `<source>...</source>` in this case.
+
+A side effect of this is that the code that aider outputs may no
+longer be properly highlighted.
+You will most often notice this if you add markdown files
+to you chats that contain code blocks.
+
+## Why is the LLM speaking to me in an unexpected language?
+
+Aider goes to some effort to prompt the model to use the language that is configured
+for your system.
+But LLMs aren't fully reliable, and they sometimes decide to speak in
+an unexpected language.
+Claude is especially fond of speaking French.
+
+You can explicitly set the language that aider tells the model to use with
+`--chat-language <language>`.
+But the LLM may not comply.
 
 ## Can I share my aider chat transcript?
 
@@ -213,6 +358,15 @@ This will give you a URL like this, which shows the chat history like you'd see 
 https://aider.chat/share/?mdurl=https://gist.github.com/Aider-AI/2087ab8b64034a078c0a209440ac8be0
 ```
 
+## Can I edit files myself while aider is running?
+
+Yes. Aider always reads the latest copy of files from the file
+system when you send each message.
+
+While you're waiting for aider's reply to complete, it's probably unwise to
+edit files that you've added to the chat.
+Your edits and aider's edits might conflict.
+
 ## What is Aider AI LLC?
 
 Aider AI LLC is the company behind the aider AI coding tool.
@@ -220,3 +374,11 @@ Aider is
 [open source and available on GitHub](https://github.com/Aider-AI/aider)
 under an 
 [Apache 2.0 license](https://github.com/Aider-AI/aider/blob/main/LICENSE.txt).
+
+## Can I Script Aider?
+
+Yes. You can script aider via the command line or python. See more from here: [Scripting aider](https://aider.chat/docs/scripting.html)
+
+
+<div style="height:80vh"></div>
+

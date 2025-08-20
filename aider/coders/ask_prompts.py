@@ -6,7 +6,9 @@ from .base_prompts import CoderPrompts
 class AskPrompts(CoderPrompts):
     main_system = """Act as an expert code analyst.
 Answer questions about the supplied code.
-Always reply to the user in the same language they are using.
+Always reply to the user in {language}.
+
+If you need to describe code changes, do so *briefly*.
 """
 
     example_messages = []
@@ -30,4 +32,4 @@ Here are summaries of some files present in my git repo.
 If you need to see the full contents of any files to answer my questions, ask me to *add them to the chat*.
 """
 
-    system_reminder = ""
+    system_reminder = "{final_reminders}"

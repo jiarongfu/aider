@@ -1,107 +1,61 @@
-import hashlib
-import json
-
-import backoff
-
 from aider.dump import dump  # noqa: F401
-from aider.llm import litellm
-
-# from diskcache import Cache
+from aider.utils import format_messages
 
 
-CACHE_PATH = "~/.aider.send.cache.v1"
-CACHE = None
-# CACHE = Cache(CACHE_PATH)
+def sanity_check_messages(messages):
+    """Check if messages alternate between user and assistant roles.
+    System messages can be interspersed anywhere.
+    Also verifies the last non-system message is from the user.
+    Returns True if valid, False otherwise."""
+    last_role = None
+    last_non_system_role = None
 
-RETRY_TIMEOUT = 60
+    for msg in messages:
+        role = msg.get("role")
+        if role == "system":
+            continue
 
+        if last_role and role == last_role:
+            turns = format_messages(messages)
+            raise ValueError("Messages don't properly alternate user/assistant:\n\n" + turns)
 
-def retry_exceptions():
-    import httpx
+        last_role = role
+        last_non_system_role = role
 
-    return (
-        httpx.ConnectError,
-        httpx.RemoteProtocolError,
-        httpx.ReadTimeout,
-        litellm.exceptions.APIConnectionError,
-        litellm.exceptions.APIError,
-        litellm.exceptions.RateLimitError,
-        litellm.exceptions.ServiceUnavailableError,
-        litellm.exceptions.Timeout,
-        litellm.exceptions.InternalServerError,
-        litellm.llms.anthropic.chat.AnthropicError,
-    )
-
-
-def lazy_litellm_retry_decorator(func):
-    def wrapper(*args, **kwargs):
-        decorated_func = backoff.on_exception(
-            backoff.expo,
-            retry_exceptions(),
-            max_time=RETRY_TIMEOUT,
-            on_backoff=lambda details: print(
-                f"{details.get('exception', 'Exception')}\nRetry in {details['wait']:.1f} seconds."
-            ),
-        )(func)
-        return decorated_func(*args, **kwargs)
-
-    return wrapper
+    # Ensure last non-system message is from user
+    return last_non_system_role == "user"
 
 
-def send_completion(
-    model_name,
-    messages,
-    functions,
-    stream,
-    temperature=0,
-    extra_params=None,
-):
-    from aider.llm import litellm
+def ensure_alternating_roles(messages):
+    """Ensure messages alternate between 'assistant' and 'user' roles.
 
-    kwargs = dict(
-        model=model_name,
-        messages=messages,
-        stream=stream,
-    )
-    if temperature is not None:
-        kwargs["temperature"] = temperature
+    Inserts empty messages of the opposite role when consecutive messages
+    of the same role are found.
 
-    if functions is not None:
-        function = functions[0]
-        kwargs["tools"] = [dict(type="function", function=function)]
-        kwargs["tool_choice"] = {"type": "function", "function": {"name": function["name"]}}
+    Args:
+        messages: List of message dictionaries with 'role' and 'content' keys.
 
-    if extra_params is not None:
-        kwargs.update(extra_params)
+    Returns:
+        List of messages with alternating roles.
+    """
+    if not messages:
+        return messages
 
-    key = json.dumps(kwargs, sort_keys=True).encode()
+    fixed_messages = []
+    prev_role = None
 
-    # Generate SHA1 hash of kwargs and append it to chat_completion_call_hashes
-    hash_object = hashlib.sha1(key)
+    for msg in messages:
+        current_role = msg.get("role")  # Get 'role', None if missing
 
-    if not stream and CACHE is not None and key in CACHE:
-        return hash_object, CACHE[key]
+        # If current role same as previous, insert empty message
+        # of the opposite role
+        if current_role == prev_role:
+            if current_role == "user":
+                fixed_messages.append({"role": "assistant", "content": ""})
+            else:
+                fixed_messages.append({"role": "user", "content": ""})
 
-    res = litellm.completion(**kwargs)
+        fixed_messages.append(msg)
+        prev_role = current_role
 
-    if not stream and CACHE is not None:
-        CACHE[key] = res
-
-    return hash_object, res
-
-
-@lazy_litellm_retry_decorator
-def simple_send_with_retries(model_name, messages, extra_params=None):
-    try:
-        kwargs = {
-            "model_name": model_name,
-            "messages": messages,
-            "functions": None,
-            "stream": False,
-            "extra_params": extra_params,
-        }
-
-        _hash, response = send_completion(**kwargs)
-        return response.choices[0].message.content
-    except (AttributeError, litellm.exceptions.BadRequestError):
-        return
+    return fixed_messages

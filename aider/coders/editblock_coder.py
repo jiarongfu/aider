@@ -35,28 +35,46 @@ class EditBlockCoder(Coder):
 
         return edits
 
-    def apply_edits(self, edits):
+    def apply_edits_dry_run(self, edits):
+        return self.apply_edits(edits, dry_run=True)
+
+    def apply_edits(self, edits, dry_run=False):
         failed = []
         passed = []
+        updated_edits = []
 
         for edit in edits:
             path, original, updated = edit
             full_path = self.abs_root_path(path)
-            content = self.io.read_text(full_path)
-            new_content = do_replace(full_path, content, original, updated, self.fence)
-            if not new_content:
+            new_content = None
+
+            if Path(full_path).exists():
+                content = self.io.read_text(full_path)
+                new_content = do_replace(full_path, content, original, updated, self.fence)
+
+            # If the edit failed, and
+            # this is not a "create a new file" with an empty original...
+            # https://github.com/Aider-AI/aider/issues/2258
+            if not new_content and original.strip():
                 # try patching any of the other files in the chat
                 for full_path in self.abs_fnames:
                     content = self.io.read_text(full_path)
                     new_content = do_replace(full_path, content, original, updated, self.fence)
                     if new_content:
+                        path = self.get_rel_fname(full_path)
                         break
 
+            updated_edits.append((path, original, updated))
+
             if new_content:
-                self.io.write_text(full_path, new_content)
+                if not dry_run:
+                    self.io.write_text(full_path, new_content)
                 passed.append(edit)
             else:
                 failed.append(edit)
+
+        if dry_run:
+            return updated_edits
 
         if not failed:
             return
@@ -365,7 +383,7 @@ def do_replace(fname, content, before_text, after_text, fence=None):
     return new_content
 
 
-HEAD = r"^<{5,9} SEARCH\s*$"
+HEAD = r"^<{5,9} SEARCH>?\s*$"
 DIVIDER = r"^={5,9}\s*$"
 UPDATED = r"^>{5,9} REPLACE\s*$"
 
@@ -383,6 +401,9 @@ missing_filename_err = (
     " {fence[0]}"
 )
 
+# Always be willing to treat triple-backticks as a fence when searching for filenames
+triple_backticks = "`" * 3
+
 
 def strip_filename(filename, fence):
     filename = filename.strip()
@@ -392,6 +413,15 @@ def strip_filename(filename, fence):
 
     start_fence = fence[0]
     if filename.startswith(start_fence):
+        candidate = filename[len(start_fence) :]
+        if candidate and ("." in candidate or "/" in candidate):
+            return candidate
+        return
+
+    if filename.startswith(triple_backticks):
+        candidate = filename[len(triple_backticks) :]
+        if candidate and ("." in candidate or "/" in candidate):
+            return candidate
         return
 
     filename = filename.rstrip(":")
@@ -433,7 +463,14 @@ def find_original_update_blocks(content, fence=DEFAULT_FENCE, valid_fnames=None)
             "```csh",
             "```tcsh",
         ]
-        next_is_editblock = i + 1 < len(lines) and head_pattern.match(lines[i + 1].strip())
+
+        # Check if the next line or the one after that is an editblock
+        next_is_editblock = (
+            i + 1 < len(lines)
+            and head_pattern.match(lines[i + 1].strip())
+            or i + 2 < len(lines)
+            and head_pattern.match(lines[i + 2].strip())
+        )
 
         if any(line.strip().startswith(start) for start in shell_starts) and not next_is_editblock:
             shell_content = []
@@ -528,7 +565,7 @@ def find_filename(lines, fence, valid_fnames):
             filenames.append(filename)
 
         # Only continue as long as we keep seeing fences
-        if not line.startswith(fence[0]):
+        if not line.startswith(fence[0]) and not line.startswith(triple_backticks):
             break
 
     if not filenames:
